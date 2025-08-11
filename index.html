@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Authentication | Kimi-Win</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+<script>
+// Create loading screen elements
+const loadingScreenHTML = `
+<div class="loading-screen">
+  <div class="logo-area">
+    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhzVfVK6MniSTFmumCREM3TWCHnQPqyQzU3hzwGuxFWd0tva0jOoYT7FXMncrSXbhQEdAzVekxuFcSNQU-99doOO2azzRvZXjmF4NtYj8ofSCrszCkgwewTC8CMuCP_Zo4LhCTL1ARGCIaRZW03sEhEOjgEVsrU8YwXkp6eVx2Xd4ZMPA1oyt7c5RBJrGQ/s16000/1000100567.gif" alt="Game Logo"/>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar">0%</div>
+  </div>
+  <div class="bottom-text" id="loadingText">Loading...</div>
+  <div class="footer">©KIMI WIN CORPORATION ALL RIGHTS RESERVED.</div>
+</div>
+`;
+
+// Add loading screen to the body
+document.body.insertAdjacentHTML('afterbegin', loadingScreenHTML);
+
+// Create audio elements
+const backgroundMusic = new Audio('https://audio.jukehost.co.uk/BGl8dh8psOhp1ujOowrVHhzv4n7q7sEL');
+backgroundMusic.loop = true;
+backgroundMusic.volume = 0.5;
+
+const progressSound = new Audio('https://audio.jukehost.co.uk/ujP7GAtp0DBqgqjLrTO05UDL8rcVDE7B');
+progressSound.volume = 0.3;
+
+// Play background music when DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+  backgroundMusic.play().catch(e => console.log("Auto-play prevented:", e));
+});
+
+// Apply the same styles
+const loadingStyles = document.createElement('style');
+loadingStyles.textContent = `
+/* Loading screen styles */
+.loading-screen {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+  180deg,
+  #005530 0%,
+  #08A04B 20%,
+  #00ad97 40%,
+  #00ad97 42%,
+  #00ad97 40%,
+  #00ad97 50%,
+  #00ad97 52%,
+  #00ad97 53%,
+  #08A04B 70%,
+  #005530 90%,
+  #000000 100%
+);
+  background-size: 100% 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 20px 30px;
+  box-sizing: border-box;
+  z-index: 9999;
+}
+
+.logo-area {
+  text-align: center;
+  color: yellow;
+}
+
+.logo-area img {
+  height: 260px;
+  width: 260px;
+  background-color: transparent;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px #005530) 
+        drop-shadow(0 0 1000px rgba(0, 85, 48, 0.69));
+  transition: transform 0.01s ease-out;
+  pointer-events: auto;
+}
+
+.logo-subtitle {
+  color: #bfff80;
+  margin-top: 10px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.progress-container {
+  width: 80%;
+  background-color: #222;
+  border-radius: 30px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 95%;
+  border-bottom: 2px solid #005530;
+  border-top: 1.5px solid #005530;
+  pointer-events: auto;
+}
+
+.progress-bar {
+  height: 26.5px;
+  width: 0;
+  background: linear-gradient(
+  180deg,
+  #005530 0%,
+  #00ad97 15%,
+  #00ad97 20%,
+  #00ad97 30%,
+  #00ad97 40%,
+  #00ad97 50%,
+  #00ad97 60%,
+  #00ad97 70%,
+  #00ad97 80%,
+  #00ad97 85%,
+  #005530 100%
+);
+  transition: width 0.2s ease;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.coin-icon {
+  position: absolute;
+  height: 40px;
+}
+
+.bottom-text {
+  margin-top: 1px;
+  color: #F9DB24;
+  font-size: 17px;
+  font-weight:500;
+}
+
+.footer {
+  font-size: 13px;
+  color: white;
+  font-weight: 400;
+  text-shadow: 2 2 4px green;
+  transition: text-shadow 0.3s ease-out;
+}
+
+.footer:hover {
+  text-shadow: 
+    0 0 10px green,
+    0 0 20px limegreen,
+    0 0 30px lime;
+}
+
+/* Responsive styles */
+@media (min-width: 600px) {
+  .logo-area img {
+    height: 350px;
+    width: 350px;
+  }
+  
+  .progress-container {
+    width: 70%;
+    margin-top: 50%;
+  }
+  
+  .logo-subtitle,
+  .bottom-text,
+  .footer {
+    font-size: 16px;
+  }
+  
+  .progress-bar {
+    height: 25px;
+    font-size: 16px;
+  }
+  
+  .coin-icon {
+    height: 45px;
+  }
+}
+
+@media (min-width: 900px) {
+  .loading-screen {
+    padding: 80px 40px 40px;
+  }
+  
+  .logo-area img {
+    height: 400px;
+    width: 400px;
+  }
+  
+  .progress-container {
+    width: 60%;
+    margin-top: 30%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .loading-screen {
+    padding: 100px 60px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
+  }
+  
+  .logo-area img {
+    height: 450px;
+    width: 450px;
+  }
+  
+  .progress-container {
+    width: 50%;
+    margin-top: 20%;
+  }
+  
+  .logo-subtitle,
+  .bottom-text,
+  .footer {
+    font-size: 18px;
+  }
+  
+  .progress-bar {
+    height: 30px;
+    font-size: 18px;
+  }
+  
+  .coin-icon {
+    height: 50px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .logo-area img {
+    height: 500px;
+    width: 500px;
+  }
+  
+  .progress-container {
+    width: 40%;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .loading-screen {
+    padding: 20px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+  }
+  
+  .logo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50%;
+  }
+  
+  .logo-area img {
+    height: 200px;
+    width: 200px;
+  }
+  
+  .progress-container {
+    width: 40%;
+    margin-top: 0;
+    margin-left: 20px;
+  }
+  
+  .logo-subtitle {
+    margin-top: 5px;
+    font-size: 12px;
+  }
+  
+  .bottom-text {
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    margin-top: 0;
+    font-size: 12px;
+  }
+  
+  .footer {
+    position: absolute;
+    bottom: 10px;
+    left: 20px;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 600px) {
+  .logo-area img {
+    height: 250px;
+    width: 250px;
+  }
+  
+  .progress-container {
+    width: 35%;
+  }
+  
+  .logo-subtitle,
+  .bottom-text,
+  .footer {
+    font-size: 14px;
+  }
+  
+  .progress-bar {
+    height: 25px;
+    font-size: 14px;
+  }
+  
+  .coin-icon {
+    height: 40px;
+  }
+}
+
+@media (max-height: 400px) and (orientation: landscape) {
+  .logo-area img {
+    height: 150px;
+    width: 150px;
+  }
+  
+  .progress-container {
+    width: 45%;
+  }
+  
+  .progress-bar {
+    height: 18px;
+    font-size: 10px;
+  }
+  
+  .coin-icon {
+    height: 30px;
+  }
+  
+  .logo-subtitle,
+  .bottom-text,
+  .footer {
+    font-size: 10px;
+  }
+}
+`;
+document.head.appendChild(loadingStyles);
+
+// Loading animation logic
+const progressBar = document.getElementById('progressBar');
+const loadingText = document.getElementById('loadingText');
+const minDuration = 2000; // 4 seconds
+const maxDuration = 15000; // 8 seconds
+const duration = Math.random() * (maxDuration - minDuration) + minDuration;
+const interval = 100;
+const steps = duration / interval;
+let progress = 0;
+let count = 0;
+let lastProgressSoundAt = 0;
+
+const messages = [
+  "Safe, secure & easy payment methods",
+  "Instant and unlimited withdrawals",
+  "Best value and top Rewards",
+  "Tournament, Salon Room, Multiplayers, Slot",
+  "24/7 customer Service Support",
+  "India's #1 Skilled gaming app",
+  "Fair and Responsible play protect",
+  "#1 Easy to use gaming app"
+];
+
+const intervalId = setInterval(() => {
+  count++;
+  progress = Math.min((count / steps) * 100, 100);
+  progressBar.style.width = progress + '%';
+  progressBar.innerText = Math.floor(progress) + '%';
+
+  // Play progress sound at certain intervals
+  if (Math.floor(progress) % 10 === 0 && Math.floor(progress) !== lastProgressSoundAt) {
+    progressSound.currentTime = 0;
+    progressSound.play().catch(e => console.log("Progress sound prevented:", e));
+    lastProgressSoundAt = Math.floor(progress);
+  }
+
+  if (progress >= 100) {
+    clearInterval(intervalId);
+    // Fade out background music when loading completes
+    const fadeAudio = setInterval(() => {
+      if (backgroundMusic.volume > 0.1) {
+        backgroundMusic.volume -= 0.1;
+      } else {
+        backgroundMusic.pause();
+        clearInterval(fadeAudio);
+      }
+    }, 100);
+    document.querySelector('.loading-screen').style.display = 'none';
+  } else if (count % 10 === 0) {
+    const msgIndex = Math.floor(Math.random() * messages.length);
+    loadingText.textContent = messages[msgIndex];
+  }
+}, interval);
+
+// Remove loading screen when page is fully loaded
+window.addEventListener('load', function() {
+  // Ensure the animation runs for at least the minimum duration
+  if (progress > 100) {
+    setTimeout(() => {
+      document.querySelector('.loading-screen').style.display = 'none';
+      clearInterval(intervalId);
+    }, minDuration - (Date.now() - startTime));
+  }
+});
+
+const startTime = Date.now();
+</script>
+  <div class="auth-container">
+    <div class="auth-header">
+      <div class="auth-logo"></div>
+      <h1 id="pageTitle">Welcome Back!</h1>
+      <p id="pageSubtitle" style="color: black;">Please Sign in to access your account</p>
+    </div>
+
+    <div class="auth-body">
+      <!-- Default Auth Tabs (shown only in default mode) -->
+      <div class="auth-tabs" id="authTabs">
+        <div class="auth-tab active" onclick="showTab('login')">Sign In</div>
+        <div class="auth-tab" onclick="showTab('signup')">Sign Up</div>
+      </div>
+
+      <!-- Login Form -->
+      <div id="login" class="auth-form active">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <i class="fas fa-envelope form-icon"></i>
+          <input type="email" id="loginEmail" class="form-control" placeholder="Enter your email address">
+        </div>
+        
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password">
+          <a href="#" onclick="showPasswordReset()" style="display: block; text-align: right; font-size: 15px; margin-top: 5px; color:#005530;">Forgot password?</a>
+        </div>
+        
+        <button class="btn btn-primary" onclick="signIn()">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+          <div class="spinner" id="loginSpinner"></div>
+        </button>
+        
+        <div class="auth-footer">
+          Don't have an account? <a href="#" onclick="showTab('signup')">Sign up</a>
+        </div>
+      </div>
+
+      <!-- Signup Form -->
+      <div id="signup" class="auth-form">
+        <div class="form-group">
+          <label for="signupEmail">Email Address</label>
+          <i class="fas fa-envelope form-icon"></i>
+          <input type="email" id="signupEmail" class="form-control" placeholder="Enter your email address">
+        </div>
+        
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="signupPassword" class="form-control" placeholder="Create a password (min 8 characters)" oninput="checkPasswordStrength()">
+          <div class="password-strength">
+            <div class="password-strength-fill" id="passwordStrength"></div>
+          </div>
+          <div id="passwordRules" style="font-size: 12px; color: var(--gray); margin-top: 5px;">
+            <i class="fas fa-info-circle"></i> Password must contain at least 8 characters, including uppercase, lowercase, and a number
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm your password">
+        </div>
+        
+        <button class="btn btn-primary" onclick="signUp()">
+          <i class="fas fa-user-plus"></i> Create Account
+          <div class="spinner" id="signupSpinner"></div>
+        </button>
+        
+        <div class="auth-footer">
+          Already have an account? <a href="#" onclick="showTab('login')">Sign in</a>
+        </div>
+      </div>
+
+      <!-- Password Reset Form -->
+      <div id="passwordResetForm" class="password-reset-form">
+        <h2>Reset Your Password</h2>
+        <div class="form-group">
+          <label for="resetPassword">New Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="resetPassword" class="form-control" placeholder="Enter new password" oninput="checkResetPasswordStrength()">
+          <div class="password-strength">
+            <div class="password-strength-fill" id="resetPasswordStrength"></div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="resetConfirmPassword">Confirm Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="resetConfirmPassword" class="form-control" placeholder="Confirm new password">
+        </div>
+        
+        <button class="btn btn-primary" onclick="handlePasswordReset()">
+          <i class="fas fa-sync-alt"></i> Reset Password
+          <div class="spinner" id="resetSpinner"></div>
+        </button>
+        
+        <div class="auth-footer">
+          Remember your password? <a href="#" onclick="showDefaultAuth()">Sign in</a>
+        </div>
+      </div>
+
+      <!-- Download App/Referral Registration Form -->
+      <div id="downloadAppForm" class="download-app-form">
+        <h2>Download The App Now</h2>
+        <p style="text-align: center; color: #005530; margin-bottom: 20px;">To Start your Earning journey with us</p>
+        
+        <div class="download-app-stats">
+          <div class="download-app-stat">
+            <div class="download-app-stat-value">4.8★</div>
+            <div class="download-app-stat-label">Rating</div>
+          </div>
+          <div class="download-app-stat">
+            <div class="download-app-stat-value">100K+</div>
+            <div class="download-app-stat-label">Downloads</div>
+          </div>
+          <div class="download-app-stat">
+            <div class="download-app-stat-value">18+</div>
+            <div class="download-app-stat-label">Age</div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="downloadEmail">Email Address</label>
+          <i class="fas fa-envelope form-icon"></i>
+          <input type="email" id="downloadEmail" class="form-control" placeholder="Enter your email address">
+        </div>
+        
+        <div class="form-group">
+          <label for="downloadPassword">Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="downloadPassword" class="form-control" placeholder="Create a password (min 8 characters)" oninput="checkDownloadPasswordStrength()">
+          <div class="password-strength">
+            <div class="password-strength-fill" id="downloadPasswordStrength"></div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="downloadConfirmPassword">Confirm Password</label>
+          <i class="fas fa-lock form-icon"></i>
+          <input type="password" id="downloadConfirmPassword" class="form-control" placeholder="Confirm your password">
+        </div>
+        
+        <div class="form-group">
+          <label for="referralCode">Referral Code (Optional)</label>
+          <i class="fas fa-user-plus form-icon"></i>
+          <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code if any">
+        </div>
+        
+        <button class="btn btn-primary" onclick="registerAndDownload()">
+          <i class="fas fa-download"></i> Register & Download
+          <div class="spinner" id="downloadSpinner"></div>
+        </button>
+        
+        <div class="download-app-footer">
+          By registering, you agree to our <a href="https://kimi-win-registration-authiiiiuuu.github.io/Terms-conditions/">Terms of Service</a> and <a href="https://kimi-win-registration-authiiiiuuu.github.io/Terms-conditions/">Privacy Policy</a>
+        </div>
+      </div>
+
+      <!-- Verification Success -->
+      <div id="verificationSuccess" style="display: none; text-align: center; padding: 30px;">
+        <div style="width: 100px; height: 100px; background: #4CAF50; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 20px;">
+          <i class="fas fa-check" style="font-size: 40px; color: white;"></i>
+        </div>
+        <h2 style="color: #005530; margin-bottom: 10px;">Email Verified!</h2>
+        <p style="color: #005530; margin-bottom: 20px;">Your email has been successfully verified. You can now access your account.</p>
+        <button class="btn btn-primary" onclick="showDefaultAuth()">
+          <i class="fas fa-sign-in-alt"></i> Continue to Login
+        </button>
+      </div>
+
+      <!-- Download Success -->
+      <div id="downloadSuccess" style="display: none; text-align: center; padding: 30px;">
+        <div style="width: 100px; height: 100px; background: #4CAF50; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 20px;">
+          <i class="fas fa-check" style="font-size: 40px; color: white;"></i>
+        </div>
+        <h2 style="color: #005530; margin-bottom: 10px;">Registration Successful!</h2>
+        <p style="color: #005530; margin-bottom: 20px;">Your account has been created successfully. Click below to download the app.</p>
+        <a href="https://apk.e-droid.net/apk/app3601702-6qc1pr.apk?v=4" class="btn btn-primary" style="text-decoration: none;">
+          <i class="fas fa-download"></i> Download Now
+        </a>
+      </div>
+    </div>
+
+    <div id="userInfo">
+      <div class="user-avatar">
+        <i class="fas fa-user"></i>
+      </div>
+      <p class="user-email">Logged in as: <span id="userEmail"></span></p>
+    </div>
+  </div>
+
+  <!-- Verification Modal -->
+  <div class="verification-modal" id="verificationModal">
+    <div class="verification-container">
+      <div class="verification-icon">
+        <i class="fas fa-envelope"></i>
+      </div>
+      <h2 class="verification-title">Verify Your Email</h2>
+      <p class="verification-message" id="verificationMessage">
+        A verification link has been sent to your email address. Please check your inbox and click the link to verify your account before proceeding.
+      </p>
+      <div class="verification-buttons">
+        <button class="verification-button verification-primary" onclick="resendVerificationEmail()">
+          <i class="fas fa-sync-alt"></i> Resend Email
+        </button>
+        <button class="verification-button verification-secondary" onclick="checkEmailVerification()">
+          <i class="fas fa-check"></i> I've Verified
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Referral Code Popup -->
+  <div class="referral-popup" id="referralPopup">
+    <div class="referral-container">
+      <div class="referral-header">
+        <h3>Claim Your Bonus!</h3>
+        <p>Enter a referral code to get ₹25 bonus (optional)</p>
+      </div>
+      <div class="referral-form">
+        <input type="text" id="referralCodeInput" placeholder="Enter referral code (optional)" maxlength="10">
+      </div>
+      <div class="referral-buttons">
+        <button class="referral-submit" onclick="submitReferralCode()">Submit</button>
+        <button class="referral-skip" onclick="skipReferralCode()">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toast-message">Success message</span>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>
